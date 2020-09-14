@@ -24,7 +24,9 @@
 
 embeds.xml
 
+#players.lua
 core.lua
+
 
 
 
