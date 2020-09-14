@@ -60,17 +60,23 @@ local basic_options = {
 WhoChannel:RegisterChatCommand("wc", "SlashCommandProcessor")
 
 function WhoChannel:SlashCommandProcessor(input)
-   if not input or input:trim() == "" then
-    LibStub("AceConfigDialog-3.0"):Open("WhoChannel")
-  else
-    LibStub("AceConfigCmd-3.0").HandleCommand(WhoChannel, "wc", "WhoChannel", input)
-  end
-
+  -- if not input or input:trim() == "" then
+  --  LibStub("AceConfigDialog-3.0"):Open("WhoChannel")
+  --else
+  --  LibStub("AceConfigCmd-3.0").HandleCommand(WhoChannel, "wc", "WhoChannel", input)
+  --end
 end
 
 
 function WhoChannel:OnInitialize()
    self:Print("OnInitialize")
+
+   self:RegisterEvent("CHAT_MSG_CHANNEL_JOIN")
+   self:RegisterEvent("CHANNEL_ROSTER_UPDATE")
+   self:RegisterEvent("CHANNEL_COUNT_UPDATE")
+   self:RegisterEvent("CHANNEL_FLAGS_UPDATED")
+   self:RegisterEvent("CHAT_MSG_CHANNEL")
+   self:RegisterEvent("CHAT_MSG_CHANNEL_LEAVE")
 
    self.options = basic_options
 
@@ -83,15 +89,15 @@ function WhoChannel:OnInitialize()
    self.playerCount = 0
    self.owner = nil
    self.classes_all_level = {
-      [WARRIOR] = {},
-      [MAGE] = {},
-      [ROGUE] = {},
-      [DRUID] = {},
-      [HUNTER] = {},
-      [SHAMAN] = {},
-      [PRIEST] = {},
-      [WARLOCK] = {},
-      [PALADIN] = {},
+      [WARRIOR] = { count = 0},
+      [MAGE] = { count = 0},
+      [ROGUE] = { count = 0},
+      [DRUID] = { count = 0},
+      [HUNTER] = { count = 0},
+      [SHAMAN] = { count = 0},
+      [PRIEST] = { count = 0},
+      [WARLOCK] = { count = 0},
+      [PALADIN] = { count = 0},
    }
 
    self.classes_max_level = {
@@ -109,20 +115,16 @@ end
 
 function WhoChannel:OnEnable()
    self:Print("OnEnable")
-   self:RegisterEvent("CHAT_MSG_CHANNEL_JOIN")
-   self:RegisterEvent("CHANNEL_ROSTER_UPDATE")
-   self:RegisterEvent("CHANNEL_COUNT_UPDATE")
-   self:RegisterEvent("CHANNEL_FLAGS_UPDATED")
-   self:RegisterEvent("CHAT_MSG_CHANNEL")
-   self:RegisterEvent("CHAT_MSG_CHANNEL_LEAVE")
 end
 
 
 local function playerDataTableToString(playersMap)
    local t = {}
    for name, p in pairs(playersMap) do
-      local class_color_str = format("|c%s", RAID_CLASS_COLORS[p.class].colorStr)
-      tinsert(t, class_color_str .. name .. "("..p.level ..")")
+      if name ~= "count" then
+         local class_color_str = format("|c%s", RAID_CLASS_COLORS[p.class].colorStr)
+         tinsert(t, class_color_str .. name .. "("..p.level ..")")
+      end
    end
    return table.concat( t, "|r, ")
 end
@@ -134,7 +136,7 @@ function WhoChannel:ReportChanStatus()
    self:Print("--- Chan Status ---")
    self:Print("--- Total : " .. self.playerCount)
    for classEnglish, playersMap in pairs(self.classes_all_level) do
-      local nb = #playersMap
+      local nb = playersMap.count
       local format_str = "%2d %s %-"..max_class_str_length.."s: %s" -- size it to max class name length
       local output
 
@@ -175,17 +177,12 @@ function WhoChannel:SearchChannelIdentifiers(channelName, displayIndex, channelI
          -- L_channelIndex = index
          self.channel_to_track_index = index
          self.channel_found = true
-                  --self:Print("Got channel display index or name -> found its name=".. current_chan_name .. " displayindex="..currentDisplayIndex.." absolute ID="..i)
          break;
       end
    end
 
    if self.channel_found then
       self:Print("Channel found")
-      --self:Get_Channel_Player_List()
-      --if self.updatePlayerListTimer == nil then
-      --   self.updatePlayerListTimer = self:ScheduleRepeatingTimer("Get_Channel_Player_List_Timer", 30, "foo")
-      --end
       --self:UnregisterEvent("CHAT_MSG_CHANNEL_JOIN")
       self:UnregisterEvent("CHANNEL_FLAGS_UPDATED")
       --self:UnregisterEvent("CHAT_MSG_CHANNEL_LEAVE")
@@ -195,135 +192,48 @@ function WhoChannel:SearchChannelIdentifiers(channelName, displayIndex, channelI
          self.reportTimer = self:ScheduleRepeatingTimer("ReportChanStatus", 240  , "foo")
       end
    end
-
-   --self:Print("Inputs: absolute index="..(L_channelIndex or "nil") .. " displayIndex="..(displayIndex or "nil") .. " no chan name="..(current_chan_name or "nil"))
-   --if L_channelIndex ~= nil then
-   --   -- we know the channel absolute index :)
-   --   self:Print("Go an abslute index="..L_channelIndex)
-   --   current_chan_name, _, _, currentDisplayIndex, count, _, category, _, _ = GetChannelDisplayInfo(L_channelIndex)
-   --   --self:Print("Got channel absolute ID -> found its name ".. current_chan_name)
-   --elseif displayIndex ~=nil or current_chan_name ~= nil then
-   --   -- determine channel by its display index
-   --   self:Print("Go a displayIndex="..(displayIndex or "nil") .. " or a chan name="..(current_chan_name or "nil"))
-   --   local channelCount = GetNumDisplayChannels()
-   --   for L_channelIndex=0, channelCount, 1 do
-   --      current_chan_name, _, _, currentDisplayIndex, count, _, category, _, _ = GetChannelDisplayInfo(L_channelIndex)
-   --      if (displayIndex ~=nil and displayIndex == currentDisplayIndex) or (current_chan_name ~=nil and current_chan_name == channelName) then
-   --         --self:Print("Got channel display index or name -> found its name=".. current_chan_name .. " displayindex="..currentDisplayIndex.." absolute ID="..i)
-   --         break;
-   --      end
-   --   end
-   --else
-   --   -- wtf
-   --end
-
-   --if L_channelIndex == nil then
-   --   self:Print("WTF !!!")
-   --   self:Print("channelName="..(channelName or "nil").." displayIndex="..(displayIndex or "nil") .." channelIndex="..(channelIndex or "nil"))
-   --end
-   ----self:Print("SearchChannelIdentifiers - chan name is " .. current_chan_name)
-   --if self.channel_to_track_name == current_chan_name then
-   --   self:Print("SearchChannelIdentifiers - chan name is the one we want, index is ".. (L_channelIndex or "nil"))
-   --   self.channel_to_track_index = L_channelIndex
-   --   self:Get_Channel_Player_List()
-   --   if self.updatePlayerListTimer == -1 then
-   --      self.updatePlayerListTimer = self:ScheduleRepeatingTimer("Get_Channel_Player_List_Timer", 30, "foo")
-   --   end
-   --end
-   --self:Print("EVERYTHING WENT FINE")
-   --self:Print("--------------------------------------------------")
-   --self:Print("")
-   --self:Print("")
-   --self:Print("")
-   --self:Print("")
---else
---   local s = "no timer"
---   if self.updatePlayerListTimer ~=nil then
---      s = "yes has timer"
---   end
---   self:Print("WTF ???? (timer exists ?".. s .." & channel_to_track_index="..(self.channel_to_track_index or "no channel yet"))
---end
 end
 
 
 function WhoChannel:GetClassesStats()
    local current_count = select(5,GetChannelDisplayInfo(self.channel_to_track_index))
-   if current_count == nil or self.playerCount == nil or current_count ~= self.playerCount then
+   if current_count == nil or self.playerCount == nil then
+      --or current_count ~= self.playerCount then
       -- game not ready to tell us how many players in chan
-      -- self:Print("Counting disagree ? Last event said ".. self.playerCount .." current GetChannelDisplayInfo says "..current_count)
       return
    end
 
-   --local classes_all_level = {
-   --   [WARRIOR] = {},
-   --   [MAGE] = {},
-   --   [ROGUE] = {},
-   --   [DRUID] = {},
-   --   [HUNTER] = {},
-   --   [SHAMAN] = {},
-   --   [PRIEST] = {},
-   --   [WARLOCK] = {},
-   --   [PALADIN] = {},
-   --}
-   --local classes_max_level = {
-   --   [WARRIOR] = {},
-   --   [MAGE] = {},
-   --   [ROGUE] = {},
-   --   [DRUID] = {},
-   --   [HUNTER] = {},
-   --   [SHAMAN] = {},
-   --   [PRIEST] = {},
-   --   [WARLOCK] = {},
-   --   [PALADIN] = {},
-   --}
    -- self:Print("Found ".. current_count .. " players in ["..self.channel_to_track_name.."]")
    for j=1, current_count, 1 do
       --self:Print("Player n° " .. j)
       --local name2, owner, moderator, muted, active, enabled = C_ChatInfo.GetChannelRosterInfo(target_channel_id, j)
       local _, _, _, guid = C_ChatInfo.GetChannelRosterInfo(self.channel_to_track_index, j)
       --self:Print("ChannelId=" .. target_channel_id .. " " .. name2)
-      --wholib:UserInfo(name2, opts)
-      --userinfo , t = wholib:CachedUserInfo(name2)
-
       --local guid = UnitGUID(name2)
       if guid ~= nil then
-         local localizedClass, englishClass, localizedRace, englishRace, sex, name, realm = GetPlayerInfoByGUID(guid)
-         local guildName, guildRankName, guildRankIndex, realm = GetGuildInfo(guid)
-         -- local inMyGuild = UnitIsInMyGuild(guid)
-         local level = UnitLevel(guid)
+         self:AddPlayer(guid)
+         --local localizedClass, englishClass, localizedRace, englishRace, sex, name, realm = GetPlayerInfoByGUID(guid)
+         --local guildName, guildRankName, guildRankIndex, realm = GetGuildInfo(guid)
+         ---- local inMyGuild = UnitIsInMyGuild(guid)
+         --local level = UnitLevel(guid)
 
-         local p = {
-            name = name,
-            class = englishClass,
-            localizedClass = localizedClass,
-            guildName = guildName or "undefined",
-            level = level or "undefined",
-            guid = guid
-         }
-         --local p = name
-         if self.classes_all_level[englishClass][p.name] == nil then
-            --tinsert(self.classes_all_level[englishClass][p.name], p)
-            self.classes_all_level[englishClass][p.name] = p
-         end
-         --if englishClass ~= nil then
-         --   self:Print(name2 .. "-"..englishClass .. " - " .. (guildName or "no guild data"))
+         --local p = {
+         --   name = name,
+         --   class = englishClass,
+         --   localizedClass = localizedClass,
+         --   guildName = guildName or "undefined",
+         --   level = level or "undefined",
+         --   guid = guid
+         --}
+         --if self.classes_all_level[englishClass][p.name] == nil then
+         --   self.classes_all_level[englishClass][p.name] = p
          --end
       end
    end
-   --for classEnglish, classList in pairs(self.classes_all_level) do
-   --   local nb = #classList
-   --   if nb > 0 then
-   --      local texture_path_str = texture_path_index[classEnglish] or "shit !"
-   --      local s =playerDataTableToString(classList)
-   --      -- table.concat( classList, ", ")
-   --      self:Print(nb .. texture_path_str.. classEnglish .. " " .. s)
-   --   end
-   --end
    self:Print("Updating internal classes list status")
-   --self.classes_all_level = classes_all_level
 end
 
-
+d
 function WhoChannel:AddToPlayersCache(p)
 end
 
@@ -332,16 +242,14 @@ function WhoChannel:GetFromPlayersCache(p)
 end
 
 
-function WhoChannel:SetPlayerCount(channelIndex, count)
-   if count == nil or count < 0 then return end
-   if channelIndex == nil or channelIndex ~= self.channel_to_track_index then return end
+--function WhoChannel:SetPlayerCount(channelIndex, count)
+--   if count == nil or count < 0 then return end
+--   if channelIndex == nil or channelIndex ~= self.channel_to_track_index then return end
 
-   if not self.channel_found then return end
-   self.playerCount = count
-   self:Print("PlayerCount in [ "..self.channel_to_track_name.." ] = [ "..self.playerCount.." ]")
-   --self:GetClassesStats()
-   --self:ReportChanStatus()
-end
+--   if not self.channel_found then return end
+--   self.playerCount = count
+--   self:Print("PlayerCount in [ "..self.channel_to_track_name.." ] = [ "..self.playerCount.." ]")
+--end
 
 function WhoChannel:CHAT_MSG_CHANNEL(_, text, playerNameWithRealm, _, channelFullName, playerName2, _, _, channelDisplayIndex, channelBaseName)
    --self:Print("CHAT_MSG_CHANNEL - channelBaseName=".. channelBaseName .. " channelDisplayIndex=" ..channelDisplayIndex)
@@ -375,32 +283,15 @@ function WhoChannel:AddPlayer(guid)
          }
    -- tinsert(self.classes_all_level[englishClass], p)
     self.classes_all_level[englishClass][p.name] = p
+    self.classes_all_level[englishClass].count = self.classes_all_level[englishClass].count + 1
 end
 
 function WhoChannel:RemovePlayer(guid)
    self.playerCount = self.playerCount - 1
    --self:SetPlayerCount(self.channel_to_track_index, self.playerCount)
-   local localizedClass, englishClass, localizedRace, englishRace, sex, name, realm = GetPlayerInfoByGUID(guid)
+   local _, englishClass, _, _, _, name, _ = GetPlayerInfoByGUID(guid)
    self.classes_all_level[englishClass][name] = nil
-   --local guildName, guildRankName, guildRankIndex, realm = GetGuildInfo(guid)
-
-   --local level = UnitLevel(guid)
-   --local p = {
-   --         name = name,
-   --         class = englishClass,
-   --         localizedClass = localizedClass,
-   --         guildName = guildName or "undefined",
-   --         level = level or "undefined"
-   --      }
-   -- tinsert(self.classes_all_level[englishClass], p)
-   --local i_to_remove
-   --for i, playerData in pairs(self.classes_all_level[englishClass]) do
-   --   if playerData.guid == guid then
-   --      i_to_remove = i
-   --      break
-   --   end
-   --end
-   --tremove(self.classes_all_level[englishClass], i_to_remove)
+   self.classes_all_level[englishClass].count = self.classes_all_level[englishClass].count - 1
 end
 
 function WhoChannel:CHAT_MSG_CHANNEL_JOIN(_, text, playerName, languageName, channelFullName, _, _, _, channelDisplayIndex, channelBaseName, _, _, guid)
@@ -433,9 +324,11 @@ function WhoChannel:CHANNEL_ROSTER_UPDATE(_, channelIndex, count)
    self:SearchChannelIdentifiers(nil, nil, channelIndex)
 
    if not self.channel_found then return end
-   self:SetPlayerCount(channelIndex, count)
+   if self.channel_to_track_index ~= channelIndex then return end
+   --self:SetPlayerCount(channelIndex, count)
    self:GetClassesStats()
    self:ReportChanStatus()
+   self:Print("ASSERTION: computed player count=".. self.playerCount .. " event count=" .. count)
 end
 
 function WhoChannel:CHANNEL_COUNT_UPDATE(_, channelIndex, new_count)
@@ -444,9 +337,13 @@ function WhoChannel:CHANNEL_COUNT_UPDATE(_, channelIndex, new_count)
       self:Print("CHANNEL_ROSTER_UPDATE for "..self.channel_to_track_name)
    end
    self:SearchChannelIdentifiers(nil, nil, channelIndex)
-   self:SetPlayerCount(channelIndex, new_count)
+   --self:SetPlayerCount(channelIndex, new_count)
+   if not self.channel_found then return end
+   if self.channel_to_track_index ~= channelIndex then return end
+
    self:GetClassesStats()
    self:ReportChanStatus()
+   self:Print("ASSERTION: computed player count=".. self.playerCount .. " event count=" .. new_count)
 end
 
 function WhoChannel:CHANNEL_FLAGS_UPDATED(_, channelIndex)
