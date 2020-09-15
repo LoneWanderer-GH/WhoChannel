@@ -62,24 +62,41 @@ WhoChannel:RegisterChatCommand("wc", "SlashCommandProcessor")
 
 function WhoChannel:SlashCommandProcessor(input)
    if not input or input:trim() == "" then
-    --LibStub("AceConfigDialog-3.0"):Open("WhoChannel")
-  else
-    --LibStub("AceConfigCmd-3.0").HandleCommand(WhoChannel, "wc", "WhoChannel", input)
-    if input:trim() == "report" then
-      self:ReportChanStatus()
-    end
-  end
+       --LibStub("AceConfigDialog-3.0"):Open("WhoChannel")
+   else
+      --LibStub("AceConfigCmd-3.0").HandleCommand(WhoChannel, "wc", "WhoChannel", input)
+
+      local action, options = strsplit(" ", input:trim(), 2)
+      action = action:trim()
+      if options == nil then options = "full" end
+      options = options:trim()
+      if action == "report" then
+         local kind, _ = strsplit(" ", options, 2)
+         kind = kind:trim()
+         if not(kind == "full" or kind == "class") then
+            self:Print("Option ".. kind .. " not recognized")
+            return
+         end
+         self:Print("/WhoChannel report")
+         self:Print("")
+         self:ReportChanStatus(kind)
+         self:Print("---")
+         self:Print("")
+
+      end
+   end
 end
 
 function WhoChannel:SchedulePrintReportTimer()
-   if self.reportTimer ~= nil then
-      self:CancelTimer(self.reportTimer)
-   end
-   self.reportTimer = self:ScheduleRepeatingTimer("ReportChanStatus", 60 , "foo")
+   return
+   --if self.reportTimer ~= nil then
+   --   self:CancelTimer(self.reportTimer)
+   --end
+   --self.reportTimer = self:ScheduleRepeatingTimer("ReportChanStatus", 60 , "foo")
 end
 
 function WhoChannel:AddToPlayersCache(guid, localizedClass, englishClass, localizedRace, englishRace, sex, name, realm,  guildName, guildRankName, guildRankIndex, level)
-   self:Print("AddToPlayersCache "..guid .. " - " .. (name or "noname"))
+   --self:Print("AddToPlayersCache "..guid .. " - " .. (name or "noname"))
    local p = {
       localizedClass = localizedClass,
       englishClass = englishClass,
@@ -95,8 +112,8 @@ function WhoChannel:AddToPlayersCache(guid, localizedClass, englishClass, locali
    }
    local existing = self.player_cache[guid]
    if existing ~= nil then
-      self:Print("USE OF ADD INSTEAD OF UPDATE !!!!! (".. guid..")")
-      return
+      --self:Print("USE OF ADD INSTEAD OF UPDATE !!!!! (".. guid..")")
+      self:UpdatePlayersCache(guid, localizedClass, englishClass, localizedRace, englishRace, sex, name, realm,  guildName, guildRankName, guildRankIndex, level)
       ---- for a given guid, we suppose that only the following fields may change over time
       --if guildName~= nil and existing.guildName ~= nil and existing.guildName ~= guildName then
       --   p.guildName = guildName
@@ -117,7 +134,7 @@ end
 
 
 function WhoChannel:UpdatePlayersCache(guid, localizedClass, englishClass, localizedRace, englishRace, sex, name, realm,  guildName, guildRankName, guildRankIndex, level)
-   self:Print("UpdatePlayersCache "..guid .. " - " .. name)
+   --self:Print("UpdatePlayersCache "..guid .. " - " .. name)
    local p = {
       localizedClass = localizedClass,
       englishClass = englishClass,
@@ -166,41 +183,6 @@ end
 
 
 function WhoChannel:AddPlayerToChanDataBase(guid)
-   --self:Print("AddPlayerToChanDataBase "..guid)
-   ----self:SetPlayerCount(self.channel_to_track_index, self.playerCount)
-   --local localizedClass, englishClass, localizedRace, englishRace, sex, name, realm = GetPlayerInfoByGUID(guid)
-
-   --if self.classes_all_level[englishClass][name] ~= nil then return end
-
-   --self.playerCount = self.playerCount + 1
-
-   --local guildName, guildRankName, guildRankIndex, _ = GetGuildInfo(name)
-
-   --local level = UnitLevel(guid)
-   --if level == nil or level == 0 then
-   --   level = "?"
-   --end
-   --local p = {
-   --         --name = name,
-   --         --class = englishClass,
-   --         --localizedClass = localizedClass,
-   --         guildName = guildName or "undefined",
-   --         level = level or "?",
-   --         guid = guid,
-
-   --         localizedClass = localizedClass,
-   --         englishClass = englishClass,
-   --         localizedRace = localizedRace,
-   --         englishRace = englishRace,
-   --         sex = sex,
-   --         name = name,
-   --         realm = realm,
-   --         guildName = guildName,
-   --         guildRankName = guildRankName,
-   --         guildRankIndex = guildRankIndex,
-   --         level = level
-   --      }
-   -- tinsert(self.classes_all_level[englishClass], p)
    local p = self.player_cache[guid]
 
 
@@ -210,7 +192,6 @@ function WhoChannel:AddPlayerToChanDataBase(guid)
       end
       self.classes_all_level[p.englishClass].count = self.classes_all_level[p.englishClass].count + 1
       self.playerCount = max(0, self.playerCount + 1)
-      --self:Print("---- FINE ----")
    else
       self:Print("---")
       self:Print("AddPlayerToChanDataBase FUCKED UP "..guid)
@@ -233,11 +214,7 @@ end
 function WhoChannel:RemovePlayerFromChanDataBase(guid)
    --self:Print("RemovePlayerFromChanDataBase "..guid)
    self.playerCount = max(0, self.playerCount - 1)
-   --if self.playerCount <= 0 then
-   --   self.playerCount = 0
-   --end
-   --self:SetPlayerCount(self.channel_to_track_index, self.playerCount)
-   local _, englishClass, _, _, _, name, _ = GetPlayerInfoByGUID(guid)
+   local englishClass = select(2, GetPlayerInfoByGUID(guid))
    self.classes_all_level[englishClass][guid] = nil
    self.classes_all_level[englishClass].count = max(0, self.classes_all_level[englishClass].count - 1)
 end
@@ -252,7 +229,7 @@ function WhoChannel:TryToGrabPlayerData(guid)
    local isInParty = UnitInParty(name)
    --local isInMyGuild = UnitIsInMyGuild(name)
 
-   if raidIndex and not C_PvP.IsActiveBattlefield() then
+   if raidIndex then --and not C_PvP.IsActiveBattlefield() then
       -- _, _, _, level, _, _, _, _, _, _, _ = GetRaidRosterInfo(raid_index)
       level = select(4, GetRaidRosterInfo(raid_index))
    elseif isInParty then
@@ -280,8 +257,6 @@ function WhoChannel:AddPlayer(guid)
    --self:Print("Adding "..guid)
    local isInCache = self:IsPlayerInCache(guid)
 
-
-
    if not isInCache then
       local _, localizedClass, englishClass, localizedRace, englishRace, sex, name, realm, guildName, guildRankName,
        guildRankIndex, level = self:TryToGrabPlayerData(guid)
@@ -301,10 +276,14 @@ function WhoChannel:RemovePlayer(guid)
 end
 
 
+local function toColorStr(englishClass)
+   return format("|c%s", RAID_CLASS_COLORS[englishClass].colorStr)
+end
+
 function WhoChannel:playerDataTableToString(playersMap) --, englishClass)
    local t = {}
    -- local p
-   local class_color_str
+   --local class_color_str
    local s
    --self:Print("Dealing with  ".. englishClass .. " type of map is " .. type(playersMap))
    for guid, p in pairs(playersMap) do
@@ -312,8 +291,8 @@ function WhoChannel:playerDataTableToString(playersMap) --, englishClass)
          if guid ~= nil then
             if self:IsPlayerInCache(guid) then
                -- p = self.player_cache[guid]
-               class_color_str = format("|c%s", RAID_CLASS_COLORS[p.englishClass].colorStr)
-               s = format("%s%s%s(%s)", class_color_str, p.name, "|r", p.level)
+               --class_color_str = format("|c%s", RAID_CLASS_COLORS[p.englishClass].colorStr)
+               s = format("%s%s%s(%s)", toColorStr(p.englishClass), p.name, "|r", p.level)
                tinsert(t, s)
             else
                self:Print("WTF BBQ - guid " .. guid .. " not in cache ?!")
@@ -327,26 +306,62 @@ function WhoChannel:playerDataTableToString(playersMap) --, englishClass)
 end
 
 
-function WhoChannel:ReportChanStatus()
-   self:Print("ReportChanStatus")
+function WhoChannel:ReportChanStatus(kind)
+   --self:Print("ReportChanStatus")
    if self.playerCount <=0 then return end
-
-   self:Print("--- Chan Status ---")
-   self:Print("--- Total : " .. self.playerCount)
+   if kind == nil then kind = "full" end
+   local header = format("--- [ %s ] -- Total players [ %3d ] ", self.channel_to_track_name, self.playerCount)
+   self:Print(header)
+   local texture_path_str
+   local s
    -- local classes_all_level = self.classes_all_level
+   local tmp_table = {}
+   local concat = (kind == "class")
+   local o
    for englishClass, playersMap in pairs(self.classes_all_level) do
       local nb = playersMap.count
       local format_str = "%2d %s %-"..max_class_str_length.."s: %s" -- size it to max class name length
       local output
+      texture_path_str = texture_path_index[englishClass] or "shit !"
 
-      if nb > 0 then
-         local texture_path_str = texture_path_index[englishClass] or "shit !"
-         local s = self:playerDataTableToString(playersMap, englishClass)
-         output = format(format_str, nb, texture_path_str, localizedClasses[englishClass], s)
-         self:Print(output)
+      if kind == "full" then
+         if nb > 0 then
+            s = self:playerDataTableToString(playersMap, englishClass)
+            output = format(format_str, nb, texture_path_str, localizedClasses[englishClass], s)
+            tinsert(tmp_table, output)
+            --self:Print(output)
+         end
+      elseif kind == "class" then
+         o = {count = nb, s = format("%s %d %s|r", toColorStr(englishClass), nb, texture_path_str)}
+         tinsert(tmp_table, o)
       end
    end
-   self:Print("-------------------")
+
+   local function compareClasses(a, b)
+      if a == nil and b == nil then return true end
+      if a == nil or b == nil then return false end
+      if not a.count then return false end
+      if not b.count then return false end
+      return a.count > b.count
+   end
+
+   if concat then
+      table.sort(tmp_table, compareClasses)
+      local tmp_table2 = {}
+      for _, e in pairs(tmp_table) do
+         --self:Print("inserting: "..e.s)
+         if e.nb > 0 then
+            tinsert(tmp_table2, e.s)
+         end
+      end
+      s = table.concat(tmp_table2, "|r")
+      self:Print(s)
+   else
+      for _, e in ipairs(tmp_table) do
+         self:Print(e)
+      end
+   end
+   --self:Print("-------------------")
 end
 
 
@@ -456,7 +471,7 @@ function WhoChannel:CHAT_MSG_CHANNEL_JOIN(_, text, playerName, languageName, cha
    if not self.channel_found or not channelBaseName == self.channel_to_track_name then return end
    self:Print("CHAT_MSG_CHANNEL_JOIN ".. playerName .. " " .. guid)
    self:AddPlayer(guid)
-   self:ReportChanStatus()
+   --self:ReportChanStatus()
 end
 
 function WhoChannel:CHAT_MSG_CHANNEL_LEAVE(_, text, playerName, languageName, channelFullName, _, _, _, channelDisplayIndex, channelBaseName, _, _, guid)
@@ -466,7 +481,7 @@ function WhoChannel:CHAT_MSG_CHANNEL_LEAVE(_, text, playerName, languageName, ch
    -- if not self.channel_found or not channelBaseName == self.channel_to_track_name then return end
    self:Print("CHAT_MSG_CHANNEL_LEAVE ".. playerName .. " " .. guid)
    self:RemovePlayer(guid)
-   self:ReportChanStatus()
+   --self:ReportChanStatus()
 end
 
 function WhoChannel:CHANNEL_ROSTER_UPDATE(_, channelIndex, count)
@@ -538,6 +553,20 @@ function WhoChannel:ParseMyGuild()
    end
 end
 
+function WhoChannel:SchedulePrintReportTimer()
+   if self.reportTimer ~= nil then
+      self:CancelTimer(self.reportTimer)
+   end
+   self.reportTimer = self:ScheduleRepeatingTimer("ReportChanStatus", 60 , "foo")
+end
+
+function WhoChannel:ScheduleGuildImport()
+   if self.guildImportTimer ~= nil then
+      self:CancelTimer(self.guildImportTimer)
+   end
+   self.guildImportTimer = self:ScheduleTimer("ParseMyGuild", 60)
+end
+
 function WhoChannel:OnInitialize()
    self:Print("OnInitialize")
    do
@@ -555,6 +584,7 @@ function WhoChannel:OnInitialize()
       self.channel_to_track_index = -1
       --self.updatePlayerListTimer = nil
       self.reportTimer = nil
+      self.guildImportTimer = nil
       self.channel_found = false
       self.playerCount = 0
       self.owner = nil
@@ -596,7 +626,7 @@ function WhoChannel:OnInitialize()
       --[PALADIN] = { count = 0},
    }
 
-   self:ParseMyGuild()
+   self:ScheduleGuildImport()
 end
 
 
